@@ -570,7 +570,7 @@ static int sc_usb_process_can_rx(struct sc_usb_priv *usb_priv, struct sc_msg_can
 		return -ETOOSMALL;
 	}
 
-	data_len = can_fd_dlc2len(rx->dlc);
+	data_len = can_dlc2len(rx->dlc);
 	can_id = usb_priv->host_to_dev32(rx->can_id);
 
 	if (rx->flags & SC_CAN_FRAME_FLAG_RTR) {
@@ -960,7 +960,8 @@ static int sc_usb_submit_rx_urbs(struct sc_usb_priv *usb_priv)
 
 static int sc_apply_configuration(struct sc_usb_priv *usb_priv)
 {
-	struct sc_net_priv *net_priv = netdev_priv(usb_priv->netdev);
+	struct net_device *netdev = usb_priv->netdev;
+	struct sc_net_priv *net_priv = netdev_priv(netdev);
 	struct sc_msg_features *feat = (struct sc_msg_features *)usb_priv->tx_cmd_buffer;
 
 	int rc = 0;
@@ -979,7 +980,7 @@ static int sc_apply_configuration(struct sc_usb_priv *usb_priv)
 	feat->len = sizeof(*feat);
 	feat->op = SC_FEAT_OP_CLEAR;
 
-	netdev_dbg(usb_priv->netdev, "clear features\n");
+	netdev_dbg(netdev, "clear features\n");
 	rc = sc_cmd_send_receive(usb_priv, sizeof(*feat));
 	if (rc) {
 		netdev_err(netdev, "clear features failed: %d\n", rc);
@@ -990,7 +991,7 @@ static int sc_apply_configuration(struct sc_usb_priv *usb_priv)
 	feat->op = SC_FEAT_OP_OR;
 	feat->arg = usb_priv->host_to_dev32(features);
 
-	netdev_dbg(usb_priv->netdev, "add features %#x\n", features);
+	netdev_dbg(netdev, "add features %#x\n", features);
 	rc = sc_cmd_send_receive(usb_priv, sizeof(*feat));
 	if (rc) {
 		netdev_err(netdev, "add features failed: %d\n", rc);
@@ -1070,7 +1071,7 @@ static void sc_usb_fill_tx(
 	tx->len = tx_len;
 	tx->track_id = track_id;
 	tx->can_id = usb_priv->host_to_dev32(CAN_EFF_MASK & cf->can_id);
-	tx->dlc = can_fd_len2dlc(cf->len);
+	tx->dlc = can_len2dlc(cf->len);
 
 	tx->flags = 0;
 
