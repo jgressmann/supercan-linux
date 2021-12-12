@@ -1,0 +1,13 @@
+*.cmd
+*.code-workspace
+*.d
+*.ko
+*.mod.c
+*.o
+.tmp_versions/
+supercan.h
+chunky.h
+Module.symvers
+modules.order 
+
+
