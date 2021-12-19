@@ -362,7 +362,7 @@ static int sc_usb_netdev_close(struct net_device *netdev)
 	usb_priv->tx_urb_available_count = usb_priv->tx_urb_count;
 
 	for (i = 0; i < net_priv->can.echo_skb_max; ++i) {
-		can_free_echo_skb(netdev, i);
+		can_free_echo_skb(netdev, i, NULL);
 		usb_priv->tx_echo_skb_available_ptr[i] = i;
 	}
 
@@ -684,7 +684,7 @@ static int sc_usb_process_can_txr(struct sc_usb_priv *usb_priv, struct sc_msg_ca
 	if (txr->flags & SC_CAN_FRAME_FLAG_DRP) {
 		// remove echo skb
 		++netdev->stats.tx_dropped;
-		can_free_echo_skb(netdev, echo_skb_index);
+		can_free_echo_skb(netdev, echo_skb_index, NULL);
 	} else {
 		// place echo skb
 		struct sk_buff *skb = net_priv->can.echo_skb[echo_skb_index];
@@ -698,7 +698,7 @@ static int sc_usb_process_can_txr(struct sc_usb_priv *usb_priv, struct sc_msg_ca
 			netdev->stats.tx_bytes += cf->len;
 
 		skb_hwtstamps(skb)->hwtstamp = hwts;
-		can_get_echo_skb(netdev, echo_skb_index);
+		can_get_echo_skb(netdev, echo_skb_index, NULL);
 	}
 
 	if (usb_priv->tx_echo_skb_available_count == 1
@@ -1143,7 +1143,7 @@ sc_usb_netdev_tx_batch_unsafe(struct net_device *netdev)
 
 			echo_skb_index = usb_priv->tx_echo_skb_used_ptr[--usb_priv->tx_echo_skb_used_count];
 			usb_priv->tx_echo_skb_available_ptr[usb_priv->tx_echo_skb_available_count++] = echo_skb_index;
-			can_free_echo_skb(netdev, echo_skb_index);
+			can_free_echo_skb(netdev, echo_skb_index, NULL);
 		}
 
 		// put urb back
@@ -1229,7 +1229,7 @@ start:
 		 * can_put_echo_skb seems to change this skb so call it
 		 * after having filled the tx urb
 		 */
-		can_put_echo_skb(skb, netdev, echo_skb_index);
+		can_put_echo_skb(skb, netdev, echo_skb_index, 0);
 
 		if (start_timer) {
 			// netdev_dbg(netdev, "start tx timer\n");
