@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only or MIT)
 
 /*
- * Copyright (c) 2020-2021 Jean Gressmann <jean@0x42.de>
+ * Copyright (c) 2020-2022 Jean Gressmann <jean@0x42.de>
  */
 
 #pragma GCC diagnostic push
