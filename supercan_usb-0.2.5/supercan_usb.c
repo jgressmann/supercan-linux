@@ -807,6 +807,8 @@ static inline int sc_usb_process_msg(struct sc_usb_priv *usb_priv, struct sc_msg
 		netdev_dbg(usb_priv->netdev, "skip unknown msg id=%#02x len=%u\n", hdr->id, hdr->len);
 		/* unhandled messages are expected as the protocol evolves */
 		return -EINVAL;
+#else
+		break;
 #endif
 	}
 
