@@ -803,10 +803,14 @@ static inline int sc_usb_process_msg(struct sc_usb_priv *usb_priv, struct sc_msg
 	case SC_MSG_CAN_ERROR:
 		return sc_usb_process_can_error(usb_priv, (struct sc_msg_can_error *)hdr);
 	default:
+#if DEBUG
 		netdev_dbg(usb_priv->netdev, "skip unknown msg id=%#02x len=%u\n", hdr->id, hdr->len);
 		/* unhandled messages are expected as the protocol evolves */
 		return -EINVAL;
+#endif
 	}
+
+	return 0;
 }
 
 static void sc_usb_process_rx_buffer(struct sc_usb_priv *usb_priv, u8 * const urb_data_ptr, unsigned int urb_data_size)
