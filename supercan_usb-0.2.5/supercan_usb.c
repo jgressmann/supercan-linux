@@ -759,7 +759,7 @@ static int sc_usb_process_can_txr(struct sc_usb_priv *usb_priv, struct sc_msg_ca
 	sc_usb_log_tx_pending_unsafe(usb_priv);
 #endif
 
-	if (txr->flags & SC_CAN_FRAME_FLAG_DRP) {
+	if (unlikely(txr->flags & SC_CAN_FRAME_FLAG_DRP)) {
 		// remove echo skb
 		++netdev->stats.tx_dropped;
 		can_free_echo_skb(netdev, echo_skb_index, NULL);
