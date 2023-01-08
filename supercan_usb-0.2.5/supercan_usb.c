@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only or MIT)
 
 /*
- * Copyright (c) 2020-2022 Jean Gressmann <jean@0x42.de>
+ * Copyright (c) 2020-2023 Jean Gressmann <jean@0x42.de>
  */
 
 #pragma GCC diagnostic push
@@ -133,6 +133,7 @@ struct sc_usb_priv {
 	u8 opened;
 	u8 tx_echo_skb_used_count;      /* echo skbs used in current tx batch */
 	u8 tx_urb_index;
+	u8 tx_batch_timer_initialized;
 #if DEBUG
 	u8 prev_rx_fifo_size;
 	u8 prev_tx_fifo_size;
@@ -1452,9 +1453,9 @@ static void sc_usb_cleanup_urbs(struct sc_usb_priv *usb_priv)
 
 static void sc_usb_netdev_uninit(struct sc_usb_priv *usb_priv)
 {
-	if (usb_priv->tx_batch_timer.function) {
+	if (usb_priv->tx_batch_timer_initialized) {
 		hrtimer_cancel(&usb_priv->tx_batch_timer);
-		usb_priv->tx_batch_timer.function = NULL;
+		usb_priv->tx_batch_timer_initialized = 0;
 	}
 
 	if (usb_priv->netdev) {
@@ -1655,6 +1656,7 @@ static int sc_usb_netdev_init(struct sc_usb_priv *usb_priv)
 	/* always init timer so it is safe to cancel */
 	hrtimer_init(&usb_priv->tx_batch_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	usb_priv->tx_batch_timer.function = &sc_tx_batch_timer_expired;
+	usb_priv->tx_batch_timer_initialized = 1;
 
 	usb_priv->tx_cmd_buffer = kmalloc(2 * usb_priv->cmd_buffer_size, GFP_KERNEL);
 	if (!usb_priv->tx_cmd_buffer) {
