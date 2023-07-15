@@ -767,17 +767,13 @@ static int sc_usb_process_can_txr(struct sc_usb_priv *usb_priv, struct sc_msg_ca
 	} else {
 		// place echo skb
 		struct sk_buff *skb = net_priv->can.echo_skb[echo_skb_index];
-		struct canfd_frame *cf = NULL;
 
 		SC_DEBUG_VERIFY(skb, goto unlock);
-		cf = (struct canfd_frame *)skb->data;
-
-		++netdev->stats.tx_packets;
-		if (!(cf->can_id & CAN_RTR_FLAG))
-			netdev->stats.tx_bytes += cf->len;
 
 		skb_hwtstamps(skb)->hwtstamp = hwts;
-		can_get_echo_skb(netdev, echo_skb_index, NULL);
+
+		++netdev->stats.tx_packets;
+		netdev->stats.tx_bytes += can_get_echo_skb(netdev, echo_skb_index, NULL);
 	}
 
 	if (usb_priv->tx_echo_skb_available_count == 1
