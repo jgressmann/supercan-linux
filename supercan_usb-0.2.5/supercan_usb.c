@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only or MIT)
 
 /*
- * Copyright (c) 2020-2022 Jean Gressmann <jean@0x42.de>
+ * Copyright (c) 2020-2023 Jean Gressmann <jean@0x42.de>
  */
 
 #pragma GCC diagnostic push
@@ -133,6 +133,7 @@ struct sc_usb_priv {
 	u8 opened;
 	u8 tx_echo_skb_used_count;      /* echo skbs used in current tx batch */
 	u8 tx_urb_index;
+	u8 tx_batch_timer_initialized;
 #if DEBUG
 	u8 prev_rx_fifo_size;
 	u8 prev_tx_fifo_size;
@@ -254,7 +255,7 @@ static void sc_usb_log_tx_pending_unsafe(struct sc_usb_priv *usb_priv)
 		// if (net_ratelimit()) {
 			// netdev_dbg(usb_priv->netdev, "tx urb avail=%u echo avail=%u echo used=%u\n", usb_priv->tx_urb_available_count, usb_priv->tx_echo_skb_available_count, usb_priv->tx_echo_skb_used_count);
 			unsigned int i = 0;
-			char buf[1024];
+			char buf[256];
 			int chars = 0;
 
 			chars += snprintf(buf + chars, sizeof(buf) - chars, "tx echo pending=");
@@ -759,7 +760,7 @@ static int sc_usb_process_can_txr(struct sc_usb_priv *usb_priv, struct sc_msg_ca
 	sc_usb_log_tx_pending_unsafe(usb_priv);
 #endif
 
-	if (txr->flags & SC_CAN_FRAME_FLAG_DRP) {
+	if (unlikely(txr->flags & SC_CAN_FRAME_FLAG_DRP)) {
 		// remove echo skb
 		++netdev->stats.tx_dropped;
 		can_free_echo_skb(netdev, echo_skb_index);
@@ -1452,9 +1453,9 @@ static void sc_usb_cleanup_urbs(struct sc_usb_priv *usb_priv)
 
 static void sc_usb_netdev_uninit(struct sc_usb_priv *usb_priv)
 {
-	if (usb_priv->tx_batch_timer.function) {
+	if (usb_priv->tx_batch_timer_initialized) {
 		hrtimer_cancel(&usb_priv->tx_batch_timer);
-		usb_priv->tx_batch_timer.function = NULL;
+		usb_priv->tx_batch_timer_initialized = 0;
 	}
 
 	if (usb_priv->netdev) {
