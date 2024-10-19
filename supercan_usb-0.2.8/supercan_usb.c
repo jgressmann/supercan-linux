@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only or MIT)
 
 /*
- * Copyright (c) 2020-2023 Jean Gressmann <jean@0x42.de>
+ * Copyright (c) 2020-2024 Jean Gressmann <jean@0x42.de>
  */
 
 #pragma GCC diagnostic push
@@ -11,11 +11,11 @@
 #include <linux/can/dev.h>
 #include <linux/can/error.h>
 #include <linux/can/netlink.h>
+#include <linux/hrtimer.h>
 #include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
 #include <linux/usb.h>
-#include <linux/hrtimer.h>
 
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic error "-Wall"
