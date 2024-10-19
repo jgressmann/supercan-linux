@@ -2008,7 +2008,7 @@ static int sc_usb_probe_dev(struct sc_usb_priv *usb_priv)
 
 
 	// nominal bitrate
-	strlcpy(usb_priv->nominal.name, SC_NAME, sizeof(usb_priv->nominal.name));
+	strscpy(usb_priv->nominal.name, SC_NAME, sizeof(usb_priv->nominal.name));
 	usb_priv->nominal.tseg1_min = can_info->nmbt_tseg1_min;
 	usb_priv->nominal.tseg1_max = usb_priv->host_to_dev16(can_info->nmbt_tseg1_max);
 	usb_priv->nominal.tseg2_min = can_info->nmbt_tseg2_min;
@@ -2019,7 +2019,7 @@ static int sc_usb_probe_dev(struct sc_usb_priv *usb_priv)
 	usb_priv->nominal.brp_inc = 1;
 
 	// data bitrate
-	strlcpy(usb_priv->data.name, SC_NAME, sizeof(usb_priv->data.name));
+	strscpy(usb_priv->data.name, SC_NAME, sizeof(usb_priv->data.name));
 	usb_priv->data.tseg1_min = can_info->dtbt_tseg1_min;
 	usb_priv->data.tseg1_max = can_info->dtbt_tseg1_max;
 	usb_priv->data.tseg2_min = can_info->dtbt_tseg2_min;
