@@ -1973,6 +1973,8 @@ static int sc_usb_probe_dev(struct sc_usb_priv *usb_priv)
 		name_str, serial_str, device_info->fw_ver_major, device_info->fw_ver_minor, device_info->fw_ver_patch);
 
 	usb_priv->fw_ge_0600 = device_info->fw_ver_major >= 1 || device_info->fw_ver_minor >= 6;
+	if (likely(usb_priv->fw_ge_0600))
+		dev_info(&usb_priv->intf->dev, "device firmware >= 0.6.0 supports TX4\n");
 
 
 	req->id = SC_MSG_CAN_INFO;
