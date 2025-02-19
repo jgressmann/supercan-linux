@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only or MIT)
 
 /*
- * Copyright (c) 2020-2024 Jean Gressmann <jean@0x42.de>
+ * Copyright (c) 2020 Jean Gressmann <jean@0x42.de>
  */
 
 #pragma GCC diagnostic push
@@ -134,6 +134,7 @@ struct sc_usb_priv {
 	u8 tx_echo_skb_used_count;      /* echo skbs used in current tx batch */
 	u8 tx_urb_index;
 	u8 tx_batch_timer_initialized;
+	u8 fw_ge_0600;
 #if DEBUG
 	u8 prev_rx_fifo_size;
 	u8 prev_tx_fifo_size;
@@ -1143,46 +1144,13 @@ fail:
 	goto out;
 }
 
-static void sc_usb_fill_tx(
-	struct sk_buff const *skb,
-	struct sc_usb_priv *usb_priv,
-	u8 track_id,
-	struct sc_msg_can_tx *tx,
-	u8 tx_len)
+static
+inline
+unsigned int
+sc_usb_tx_len(struct sk_buff const *skb, unsigned int base_size)
 {
-	struct canfd_frame const *cf = (struct canfd_frame const *)skb->data;
-
-	tx->id = SC_MSG_CAN_TX;
-	tx->len = tx_len;
-	tx->track_id = track_id;
-	tx->can_id = usb_priv->host_to_dev32(CAN_EFF_MASK & cf->can_id);
-	tx->dlc = can_fd_len2dlc(cf->len);
-
-	tx->flags = 0;
-
-	if (CAN_EFF_FLAG & cf->can_id)
-		tx->flags |= SC_CAN_FRAME_FLAG_EXT;
-
-	if (can_is_canfd_skb(skb)) {
-		tx->flags |= SC_CAN_FRAME_FLAG_FDF;
-		if (cf->flags & CANFD_BRS)
-			tx->flags |= SC_CAN_FRAME_FLAG_BRS;
-		if (cf->flags & CANFD_ESI)
-			tx->flags |= SC_CAN_FRAME_FLAG_ESI;
-
-		memcpy(tx->data, cf->data, cf->len);
-	} else {
-		if (cf->can_id & CAN_RTR_FLAG)
-			tx->flags |= SC_CAN_FRAME_FLAG_RTR;
-		else
-			memcpy(tx->data, cf->data, cf->len);
-	}
-}
-
-static inline unsigned int sc_usb_tx_len(struct sk_buff const *skb)
-{
+	unsigned int len = base_size;
 	struct canfd_frame const *cf = NULL;
-	unsigned int len = (unsigned int)sizeof(struct sc_msg_can_tx);
 
 	SC_ASSERT(skb);
 
@@ -1266,15 +1234,28 @@ sc_usb_netdev_start_xmit(struct sk_buff *skb, struct net_device *netdev)
 {
 	struct sc_net_priv *net_priv = netdev_priv(netdev);
 	struct sc_usb_priv *usb_priv = net_priv->usb;
+	struct canfd_frame const *cf = (struct canfd_frame const *)skb->data;
 	unsigned long flags = 0;
 	netdev_tx_t rc = NETDEV_TX_OK;
 	unsigned int tx_len = 0;
-
+	unsigned int data_offset = 0;
+	unsigned int base_size = 0;
+	u8 frame_id = 0;
 
 	if (unlikely(can_dropped_invalid_skb(netdev, skb)))
 		return NETDEV_TX_OK;
 
-	tx_len = sc_usb_tx_len(skb);
+	if (likely(usb_priv->fw_ge_0600)) {
+		data_offset = 3;
+		base_size = sizeof(struct sc_msg_can_tx4);
+		frame_id = SC_MSG_CAN_TX4;
+	} else {
+		data_offset = 0;
+		base_size = sizeof(struct sc_msg_can_tx);
+		frame_id = SC_MSG_CAN_TX;
+	}
+
+	tx_len = sc_usb_tx_len(skb, base_size);
 
 	spin_lock_irqsave(&usb_priv->tx_lock, flags);
 
@@ -1283,7 +1264,8 @@ start:
 		(usb_priv->tx_urb_available_count ||
 			usb_priv->tx_urb_index != usb_priv->tx_urb_count)) {
 		struct sc_urb_data *urb_data = NULL;
-		void *ptr = NULL;
+		struct sc_msg_can_tx *tx = NULL;
+		u8* data = NULL;
 		unsigned int echo_skb_index = -1;
 		bool start_timer = false;
 
@@ -1319,10 +1301,36 @@ start:
 		SC_DEBUG_VERIFY(usb_priv->tx_echo_skb_used_count < net_priv->can.echo_skb_max, goto unlock);
 		usb_priv->tx_echo_skb_used_ptr[usb_priv->tx_echo_skb_used_count++] = echo_skb_index;
 
-		ptr = (u8 *)urb_data->mem + urb_data->urb->transfer_buffer_length;
+		tx = (struct sc_msg_can_tx *)((u8 *)urb_data->mem + urb_data->urb->transfer_buffer_length);
 		urb_data->urb->transfer_buffer_length += tx_len;
+		data = &tx->data[data_offset];
 
-		sc_usb_fill_tx(skb, usb_priv, echo_skb_index, ptr, tx_len);
+		// setup tx frame
+		tx->id = frame_id;
+		tx->len = tx_len;
+		tx->track_id = echo_skb_index;
+		tx->can_id = usb_priv->host_to_dev32(CAN_EFF_MASK & cf->can_id);
+		tx->dlc = can_fd_len2dlc(cf->len);
+
+		tx->flags = 0;
+
+		if (CAN_EFF_FLAG & cf->can_id)
+			tx->flags |= SC_CAN_FRAME_FLAG_EXT;
+
+		if (can_is_canfd_skb(skb)) {
+			tx->flags |= SC_CAN_FRAME_FLAG_FDF;
+			if (cf->flags & CANFD_BRS)
+				tx->flags |= SC_CAN_FRAME_FLAG_BRS;
+			if (cf->flags & CANFD_ESI)
+				tx->flags |= SC_CAN_FRAME_FLAG_ESI;
+
+			memcpy(data, cf->data, cf->len);
+		} else {
+			if (cf->can_id & CAN_RTR_FLAG)
+				tx->flags |= SC_CAN_FRAME_FLAG_RTR;
+			else
+				memcpy(data, cf->data, cf->len);
+		}
 
 		/*
 		 * can_put_echo_skb seems to change this skb so call it
@@ -1963,6 +1971,8 @@ static int sc_usb_probe_dev(struct sc_usb_priv *usb_priv)
 
 	dev_info(&usb_priv->intf->dev, "device %s, serial %s, firmware version %u.%u.%u\n",
 		name_str, serial_str, device_info->fw_ver_major, device_info->fw_ver_minor, device_info->fw_ver_patch);
+
+	usb_priv->fw_ge_0600 = device_info->fw_ver_major >= 1 || device_info->fw_ver_minor >= 6;
 
 
 	req->id = SC_MSG_CAN_INFO;
