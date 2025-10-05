@@ -1384,14 +1384,14 @@ static int sc_usb_can_set_data_bittiming(struct net_device *netdev)
 	memset(bt, 0, sizeof(*bt));
 	bt->id = SC_MSG_DT_BITTIMING;
 	bt->len = sizeof(*bt);
-	bt->brp = usb_priv->host_to_dev16(net_priv->can.data_bittiming.brp);
-	bt->sjw = net_priv->can.data_bittiming.sjw;
-	bt->tseg1 = usb_priv->host_to_dev16(net_priv->can.data_bittiming.prop_seg + net_priv->can.data_bittiming.phase_seg1);
-	bt->tseg2 = net_priv->can.data_bittiming.phase_seg2;
+	bt->brp = usb_priv->host_to_dev16(net_priv->can.fd.data_bittiming.brp);
+	bt->sjw = net_priv->can.fd.data_bittiming.sjw;
+	bt->tseg1 = usb_priv->host_to_dev16(net_priv->can.fd.data_bittiming.prop_seg + net_priv->can.fd.data_bittiming.phase_seg1);
+	bt->tseg2 = net_priv->can.fd.data_bittiming.phase_seg2;
 	netdev_dbg(usb_priv->netdev, "data brp=%lu sjw=%lu tseg1=%lu, tseg2=%lu bitrate=%lu\n",
-		(unsigned long)net_priv->can.data_bittiming.brp, (unsigned long)net_priv->can.data_bittiming.sjw,
-		(unsigned long)(net_priv->can.data_bittiming.prop_seg + net_priv->can.data_bittiming.phase_seg1),
-		(unsigned long)net_priv->can.data_bittiming.phase_seg2, (unsigned long)net_priv->can.data_bittiming.bitrate);
+		(unsigned long)net_priv->can.fd.data_bittiming.brp, (unsigned long)net_priv->can.fd.data_bittiming.sjw,
+		(unsigned long)(net_priv->can.fd.data_bittiming.prop_seg + net_priv->can.fd.data_bittiming.phase_seg1),
+		(unsigned long)net_priv->can.fd.data_bittiming.phase_seg2, (unsigned long)net_priv->can.fd.data_bittiming.bitrate);
 
 	netdev_dbg(usb_priv->netdev, "set data bittiming\n");
 	return sc_cmd_send_receive(usb_priv, sizeof(*bt));
@@ -1725,8 +1725,8 @@ static int sc_usb_netdev_init(struct sc_usb_priv *usb_priv)
 	net_priv->can.do_set_bittiming = &sc_usb_can_set_bittiming;
 
 	if (usb_priv->ctrlmode_supported & CAN_CTRLMODE_FD) {
-		net_priv->can.data_bittiming_const = &usb_priv->data;
-		net_priv->can.do_set_data_bittiming = &sc_usb_can_set_data_bittiming;
+		net_priv->can.fd.data_bittiming_const = &usb_priv->data;
+		net_priv->can.fd.do_set_data_bittiming = &sc_usb_can_set_data_bittiming;
 	}
 
 	if (unlikely(net_priv->can.echo_skb_max != usb_priv->dev_tx_fifo_size)) {
