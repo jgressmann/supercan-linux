@@ -1408,7 +1408,6 @@ static const struct net_device_ops sc_usb_netdev_ops = {
 	.ndo_open = &sc_usb_netdev_open,
 	.ndo_stop = &sc_usb_netdev_close,
 	.ndo_start_xmit = &sc_usb_netdev_start_xmit,
-	.ndo_change_mtu = &can_change_mtu,
 };
 
 
